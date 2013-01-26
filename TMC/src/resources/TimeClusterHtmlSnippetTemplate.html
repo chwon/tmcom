@@ -1,0 +1,207 @@
+
+<h2 style="text-align: center;"> Time Cluster result for: </h2><br>
+<p style="text-align: center;"> REVIEWEDENTITY<br>
+ at REVIEWPAGEURL </p>
+
+
+<script src="http://mbostock.github.com/d3/d3.v2.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
+
+<style>
+
+.axis text {
+  font: 12px sans-serif;
+}
+
+.axis path, .axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+
+.tooltip {
+	position: absolute;
+	top: 100px;
+	left: 100px;
+  -moz-border-radius:5px;
+	border-radius: 5px;
+  border: 2px solid #000;
+	/* background: #222222; */
+  background: #fff;
+	opacity: .9;
+	/* color: #eeeeee; */
+  color: black;
+	padding: 10px;
+	width: 300px;
+	font-size: 12px;
+	z-index: 10;
+}
+
+.tooltip .title {
+	font-size: 13px;
+}
+
+.tooltip .name {
+  font-weight:bold;
+}
+
+
+.tt-title {
+	font-weight: bold;
+	font-size: 16px;
+	font-family: sans-serif;
+}
+
+.tt-entry {
+	font-weight:normal;
+	font-size: 13px;
+	font-family: sans-serif;
+}
+
+</style>
+
+<script type="text/javascript" >
+
+var tooltip = CustomTooltip("cluster_tooltip", 280)
+
+
+
+var data = [
+CLUSTERDATA
+];
+
+var total_reviews = TOTALREVIEWS;
+var first_ts = FIRSTTS;
+var last_ts = LASTTS;
+
+
+var firstDate = new Date(first_ts * 1000),
+	lastDate = new Date(),
+	total_days = ((((lastDate.getTime() - firstDate.getTime()) / 1000) / 86400) + 1).toFixed(0),
+	total_density = total_reviews / total_days
+
+data.forEach( function(value) { value.numDays = (((value.last - value.first) / 86400) + 1).toFixed(0);
+								value.density = value.size / value.numDays;
+								value.relativeDensity = value.density / total_density;
+							   } );
+
+var  h=500
+	,w=800
+	,margin=50
+	,minBarWidth = 10
+	,color = d3.scale.log().domain([0.0, total_density, 5.0, 10.0, total_reviews]).range(["white", "white", "blue", "yellow", "red"])
+	,shortDateFormat = d3.time.format("%b %d %Y")
+
+	,x = d3.time.scale()
+		.domain([firstDate, lastDate])
+		.range([0+margin, w-margin])
+
+	,y = d3.scale.linear()
+		.domain([0, d3.max(data, function(cluster) { return cluster.size; } )])
+		.rangeRound([h-margin, 0+margin])
+
+	,xAxis = d3.svg.axis()
+			 .scale(x)
+			 .orient("bottom")
+			 .ticks(2)
+			 .tickFormat( function(d) { return shortDateFormat(d); } )
+	,yAxis = d3.svg.axis()
+			 .scale(y)
+			 .orient("left")
+			 .ticks(4)
+
+svg = d3.select(".entry-content")
+	.append("svg")
+	.attr("height",h)
+	.attr("width",w)
+
+svg.selectAll("rect").
+	data(data).
+	enter().
+	append("svg:rect").
+	attr("x", function(d) { return x(new Date(d.first * 1000)); }).
+	attr("y", function(d) { return y(d.size); }).
+	attr("height", function(d) { return h - margin - y(d.size); }).
+	attr("width", function(d) { return Math.max(minBarWidth, x(new Date(d.last * 1000)) - x(new Date(d.first * 1000))); }).
+	attr("fill", function(d) { return color(d.relativeDensity); }).
+	attr("fill-opacity", function(d) { return 1.0; }).
+	attr("stroke", function(d) { return "gray"; }).
+	attr("stroke-width", function(d) { return 0.5; }).
+	on("mouseover", function(d, i) { return show_details(d, i, this); }).
+	on("mouseout", function(d, i) { return hide_details(d, i, this); });
+
+svg.append("g").attr("class","axis x").attr("transform","translate (0 "+y(0)+")").call(xAxis)
+svg.append("g").attr("class","axis y").attr("transform","translate ("+x(firstDate)+" 0)").call(yAxis)
+
+
+function show_details(data, i, element) {
+    var content;
+    //density = numDays / total_days;
+    content = "<center><span class=\"tt-title\">" + data.name + " (" + data.size + " reviews in " + data.numDays + " days)</span></center><br/>";
+    content += "<span class=\"tt-entry\">Accounts for " + ((data.size / total_reviews) * 100).toFixed(2) + "% of all reviews.</span><br/>";
+    content += "<span class=\"tt-entry\">Has an average rating of " + (data.averagerating).toFixed(1) + ".</span><br/>";
+    content += "<span class=\"tt-entry\">Has a density of " + (data.relativeDensity * 100).toFixed(1) + "%.</span><br/>";
+    content += "<span class=\"tt-entry\">First review @ " + shortDateFormat(new Date(data.first * 1000)) + ".</span><br/>";
+	content += "<span class=\"tt-entry\">Last review @ " + shortDateFormat(new Date(data.last * 1000)) + ".</span>";
+    return tooltip.showTooltip(content, d3.event);
+}
+
+function hide_details(data, i, element) {
+    return tooltip.hideTooltip();
+}
+
+
+function CustomTooltip(tooltipId, width){
+	var tooltipId = tooltipId;
+	$("body").append("<div class='tooltip' id='"+tooltipId+"'></div>");
+	
+	if(width){
+		$("#"+tooltipId).css("width", width);
+		//$("#"+tooltipId).css("width", width);
+	}
+	
+	hideTooltip();
+	
+	function showTooltip(content, event){
+		$("#"+tooltipId).html(content);
+		$("#"+tooltipId).show();
+		
+		updatePosition(event);
+	}
+	
+	function hideTooltip(){
+		$("#"+tooltipId).hide();
+	}
+	
+	function updatePosition(event){
+		var ttid = "#"+tooltipId;
+		var xOffset = 20;
+		var yOffset = 10;
+		
+		 var ttw = $(ttid).width();
+		 var tth = $(ttid).height();
+		 var wscrY = $(window).scrollTop();
+		 var wscrX = $(window).scrollLeft();
+		 var curX = (document.all) ? event.clientX + wscrX : event.pageX;
+		 var curY = (document.all) ? event.clientY + wscrY : event.pageY;
+		 var ttleft = ((curX - wscrX + xOffset*2 + ttw) > $(window).width()) ? curX - ttw - xOffset*2 : curX + xOffset;
+		 if (ttleft < wscrX + xOffset){
+		 	ttleft = wscrX + xOffset;
+		 } 
+		 var tttop = ((curY - wscrY + yOffset*2 + tth) > $(window).height()) ? curY - tth - yOffset*2 : curY + yOffset;
+		 if (tttop < wscrY + yOffset){
+		 	tttop = curY + yOffset;
+		 } 
+		 $(ttid).css('top', tttop + 'px').css('left', ttleft + 'px');
+	}
+	
+	return {
+		showTooltip: showTooltip,
+		hideTooltip: hideTooltip,
+		updatePosition: updatePosition
+	}
+}
+
+
+</script>
