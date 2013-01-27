@@ -119,6 +119,11 @@ public class TMcom extends HttpServlet {
 		String result = "";
 
 		String responseBody = "";
+		
+		Map<String, String[]> params = null;
+		if (request.getParameter("PARAMAUTOSET") == null) {
+			params = request.getParameterMap();
+		}
 
 		if (evaluatorName == null) {
 			responseBody = generateErrorPageBody("The evaluator could not be found.");
@@ -126,7 +131,7 @@ public class TMcom extends HttpServlet {
 			responseBody = generateErrorPageBody("There is no data extractor assigned to " + reviewpage + ".");
 		} else {
 			responseBody = dispatchRequest(evaluatorName, datasourceName,
-					reviewpage);
+					reviewpage, params);
 		}
 
 		result = responsePageFrame.replace(responsePageFramePlaceholder,
@@ -156,7 +161,7 @@ public class TMcom extends HttpServlet {
 	
 
 	private String dispatchRequest(String evaluatorName, String datasourceName,
-			String reviewSite) {
+			String reviewSite, Map<String, String[]> evalParameters) {
 
 		String responseBody = "The processing of your request failed.";
 
@@ -180,6 +185,8 @@ public class TMcom extends HttpServlet {
 				eval = (Evaluator) evaluatorClass.newInstance();
 				evaluatorPool.put(evaluatorClass, eval);
 			}
+			
+			eval.setParameters(evalParameters);
 
 			if (eval.loadData(ds) != Evaluator.ReturnCode.OK) {
 				return generateErrorPageBody("Evaluation failed!");

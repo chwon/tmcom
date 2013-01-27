@@ -25,8 +25,8 @@ import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
-import tm.datasource.AbstractDatasource;
 import tm.datasource.Datasource;
 import tm.evaluator.AbstractEvaluator;
 import tm.rating.Review;
@@ -36,8 +36,14 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 	private String earliestTimestamp;
 	private String latestTimestamp;
 
-	private int epsilon = 7 * (60 * 60 * 24); // first number specifies days
-	private int minpts = 3;
+	private final int epsilonDefault = 7 * (60 * 60 * 24); // first number specifies days
+	private final int minptsDefault = 3;
+	
+	private int epsilon = epsilonDefault;
+	private int minpts = minptsDefault;
+	
+	private final String paramEpsilonInDays = "EPSILONINDAYS";
+	private final String paramMinpts = "MINPTS";
 
 	Collection<ReviewCluster> clusters;
 
@@ -68,6 +74,39 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 
 		return ReturnCode.OK;
 
+	}
+
+	@Override
+	public void setParameters(Map<String, String[]> params) {
+		if (params == null) return;
+		
+		System.out.println("HERE");
+		
+		String[] pEpsArray = params.get(paramEpsilonInDays);
+		if (pEpsArray != null && pEpsArray.length > 0) {
+			Integer pEpsInt = stringToInt(pEpsArray[0]);
+			if (pEpsInt != null && pEpsInt.intValue() > 0) {
+				epsilon = pEpsInt.intValue() * (60 * 60 * 24);
+			}
+		}
+		
+		String[] pMinptsArray = params.get(paramMinpts);
+		if (pMinptsArray != null && pMinptsArray.length > 0) {
+			Integer pMinptsInt = stringToInt(pMinptsArray[0]);
+			if (pMinptsInt != null && pMinptsInt.intValue() > 0) {
+				minpts = pMinptsInt.intValue();
+			}
+		}
+	}
+
+	private Integer stringToInt(String intStr) {
+		int res;
+		try {
+			res = Integer.valueOf(intStr);
+		} catch (NumberFormatException e) {
+			return null;
+		}
+		return res;
 	}
 
 	public void setEpsilon(int epsilon) {
@@ -147,21 +186,21 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 		return null;
 	}
 
-	public void printClusters() {
-
-		System.out.println(clusters.size()
-				+ " clusters found (including noise).");
-
-		for (ReviewCluster c : clusters) {
-			System.out.println(c);
-			List<Integer> sortedVals = c.getSortedValues();
-			for (Integer i : sortedVals) {
-				Date date = new Date(i.longValue() * 1000L);
-				System.out.println("\t" + date.toGMTString());
-			}
-		}
-
-	}
+//	public void printClusters() {
+//
+//		System.out.println(clusters.size()
+//				+ " clusters found (including noise).");
+//
+//		for (ReviewCluster c : clusters) {
+//			System.out.println(c);
+//			List<Integer> sortedVals = c.getSortedValues();
+//			for (Integer i : sortedVals) {
+//				Date date = new Date(i.longValue() * 1000L);
+//				System.out.println("\t" + date.toGMTString());
+//			}
+//		}
+//
+//	}
 	
 	private String fileToString(String filename) {
 

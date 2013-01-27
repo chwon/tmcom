@@ -17,6 +17,8 @@
 
 package tm.evaluator;
 
+import java.util.Map;
+
 import tm.datasource.Datasource;
 
 public interface Evaluator {
@@ -27,6 +29,8 @@ public interface Evaluator {
 	}
 	
 	public ReturnCode loadData(Datasource datasource);
+	
+	public void setParameters(Map<String, String[]> params);
 	
 	public String generateEvaluationHtmlPage() throws UnsupportedOperationException;
 	

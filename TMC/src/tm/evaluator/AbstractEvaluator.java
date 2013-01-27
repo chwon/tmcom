@@ -17,6 +17,8 @@
 
 package tm.evaluator;
 
+import java.util.Map;
+
 import tm.datasource.Datasource;
 import tm.rating.Rating;
 
@@ -34,14 +36,19 @@ public abstract class AbstractEvaluator implements Evaluator {
 		doEvaluation();
 	}
 	
+	public AbstractEvaluator(Datasource datasource, Map<String, String[]> params) {
+		super();
+		setParameters(params);
+		rating = datasource.getRating();
+		doEvaluation();
+	}
+	
 	public ReturnCode loadData(Datasource datasource) {
 		rating = datasource.getRating();
 		return doEvaluation();
 	}
 	
-	protected ReturnCode doEvaluation() {
-		return ReturnCode.ERROR;
-	}
+	protected abstract ReturnCode doEvaluation();
 
 	public Rating getRating() {
 		return rating;
