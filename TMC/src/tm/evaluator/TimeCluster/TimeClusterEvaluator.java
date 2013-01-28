@@ -80,8 +80,6 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 	public void setParameters(Map<String, String[]> params) {
 		if (params == null) return;
 		
-		System.out.println("HERE");
-		
 		String[] pEpsArray = params.get(paramEpsilonInDays);
 		if (pEpsArray != null && pEpsArray.length > 0) {
 			Integer pEpsInt = stringToInt(pEpsArray[0]);

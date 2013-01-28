@@ -104,6 +104,8 @@ public abstract class AbstractDatasource implements Datasource {
 
 			URL url = new URL(urlString);
 			URLConnection con = url.openConnection();
+			con.setRequestProperty("User-Agent",
+					"Mozilla/5.0 (Windows NT 6.1; WOW64; rv:17.0) Gecko/20100101 Firefox/17.0");
 
 			Reader r = new InputStreamReader(con.getInputStream(), encoding);
 
