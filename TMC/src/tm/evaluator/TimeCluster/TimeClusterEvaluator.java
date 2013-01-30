@@ -13,7 +13,7 @@
 
  You should have received a copy of the GNU Affero General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
 package tm.evaluator.TimeCluster;
 
@@ -36,12 +36,14 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 	private String earliestTimestamp;
 	private String latestTimestamp;
 
-	private final int epsilonDefault = 7 * (60 * 60 * 24); // first number specifies days
+	private final int epsilonDefaultInDays = 7;
+	private final int epsilonDefault = epsilonDefaultInDays * (60 * 60 * 24);
 	private final int minptsDefault = 3;
-	
+
+	private int epsilonInDays = epsilonDefaultInDays;
 	private int epsilon = epsilonDefault;
 	private int minpts = minptsDefault;
-	
+
 	private final String paramEpsilonInDays = "EPSILONINDAYS";
 	private final String paramMinpts = "MINPTS";
 
@@ -54,6 +56,7 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 	private final String placeholderTotalReviews = "TOTALREVIEWS";
 	private final String placeholderFirstTs = "FIRSTTS";
 	private final String placeholderLastTs = "LASTTS";
+	private final String placeholderFooterText = "FOOTERTEXT";
 
 	public TimeClusterEvaluator(Datasource datasource) {
 		super(datasource);
@@ -78,16 +81,18 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 
 	@Override
 	public void setParameters(Map<String, String[]> params) {
-		if (params == null) return;
-		
+		if (params == null)
+			return;
+
 		String[] pEpsArray = params.get(paramEpsilonInDays);
 		if (pEpsArray != null && pEpsArray.length > 0) {
 			Integer pEpsInt = stringToInt(pEpsArray[0]);
 			if (pEpsInt != null && pEpsInt.intValue() > 0) {
+				epsilonInDays = pEpsInt.intValue();
 				epsilon = pEpsInt.intValue() * (60 * 60 * 24);
 			}
 		}
-		
+
 		String[] pMinptsArray = params.get(paramMinpts);
 		if (pMinptsArray != null && pMinptsArray.length > 0) {
 			Integer pMinptsInt = stringToInt(pMinptsArray[0]);
@@ -127,7 +132,7 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 			throws UnsupportedOperationException {
 
 		String htmlSnippetTemplate = fileToString(htmlSnippetTemplateFilePath);
-		
+
 		StringBuffer clusterData = new StringBuffer();
 		int clusterNo = 1;
 		for (ReviewCluster c : clusters) {
@@ -160,13 +165,39 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 		String totalReviewsString = new Integer(rating.getReviews().size())
 				.toString();
 
+		String footerString = "";
+		String infoString = "<p style=\"text-align: center; font-size: 90%;\"> [ "
+				+ getRating().getReviews().size() + " reviews | &#949 = "
+				+ epsilonInDays + " | minPts = " + minpts + " ] </p>";
+
+		if (clusterNo > 1) { // at least one cluster found
+			String pluralSuffix = (clusterNo > 2) ? "s" : "";
+			footerString = "<h3 style=\"text-align: center;\"> "
+					+ (clusterNo - 1)
+					+ " cluster"
+					+ pluralSuffix
+					+ " found &mdash; place the mouse over a bar to see more information. </h3>"
+					+ "<p style=\"text-align: center;\">Each bar stands for a cluster of reviews, i.e. a period where at least "
+					+ minpts + " reviews were created with less than "
+					+ epsilonInDays + " days between each other.</p>" + infoString;
+		} else {
+			footerString = "<h3 style=\"text-align: center;\"> No cluster was found. </h3>"
+					+ "<p style=\"text-align: center;\">With the current settings, this means that there is no period where at least "
+					+ minpts
+					+ " reviews were created with less than "
+					+ epsilonInDays + " days between each other.</p>" + infoString;
+		}
+
 		return htmlSnippetTemplate
-				.replace(placeholderReviewedEntity, rating.getReviewedEntity().getName())
-				.replace(placeholderReviewPageUrl, rating.getWebsiteInfo().getBaseUrl())
+				.replace(placeholderReviewedEntity,
+						rating.getReviewedEntity().getName())
+				.replace(placeholderReviewPageUrl,
+						rating.getWebsiteInfo().getBaseUrl())
 				.replace(placeholderClusterData, clusterData.toString())
 				.replace(placeholderTotalReviews, totalReviewsString)
 				.replace(placeholderFirstTs, earliestTimestamp)
-				.replace(placeholderLastTs, latestTimestamp);
+				.replace(placeholderLastTs, latestTimestamp)
+				.replace(placeholderFooterText, footerString);
 
 	}
 
@@ -184,22 +215,22 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 		return null;
 	}
 
-//	public void printClusters() {
-//
-//		System.out.println(clusters.size()
-//				+ " clusters found (including noise).");
-//
-//		for (ReviewCluster c : clusters) {
-//			System.out.println(c);
-//			List<Integer> sortedVals = c.getSortedValues();
-//			for (Integer i : sortedVals) {
-//				Date date = new Date(i.longValue() * 1000L);
-//				System.out.println("\t" + date.toGMTString());
-//			}
-//		}
-//
-//	}
-	
+	// public void printClusters() {
+	//
+	// System.out.println(clusters.size()
+	// + " clusters found (including noise).");
+	//
+	// for (ReviewCluster c : clusters) {
+	// System.out.println(c);
+	// List<Integer> sortedVals = c.getSortedValues();
+	// for (Integer i : sortedVals) {
+	// Date date = new Date(i.longValue() * 1000L);
+	// System.out.println("\t" + date.toGMTString());
+	// }
+	// }
+	//
+	// }
+
 	private String fileToString(String filename) {
 
 		try {
@@ -225,6 +256,5 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 		}
 
 	}
-	
 
 }
