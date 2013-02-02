@@ -28,8 +28,6 @@ public class TripadvisorDeDatasource extends TripadvisorComDatasource {
 		
 		super();
 		
-		source = SOURCE.LOAD_FROM_URL;
-		
 		websiteInfoName = "Trip Advisor";
 		websiteInfoBaseUrl = "www.tripadvisor.de";
 		

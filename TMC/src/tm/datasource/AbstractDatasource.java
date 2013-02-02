@@ -18,52 +18,60 @@
 package tm.datasource;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.Scanner;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 import tm.rating.Rating;
+import tm.rating.Review;
 
 public abstract class AbstractDatasource implements Datasource {
 
 	protected Rating rating;
 
-	protected String ratingBaseSiteFullUrlString;
+	protected String ratingBaseSiteOriginalRef;
+	
 	protected String ratingBaseSiteFile;
 	protected String ratingBaseSitePrefix;
+	protected String ratingBaseSiteNormalizedUrl;
+	
+	protected String patternLinkZoneStart;
+	protected String patternLinkZoneEnd;
+	protected String patternLinkStart;
+	protected String patternLinkEnd;
+	protected String patternLinkPrefix;
 
 	protected String encoding = "UTF-8";
-
-	protected abstract void fillHeaderData(String fileContent);
-
-	protected abstract void traverseReviewData(String entryUrl)
-			throws IOException;
 
 	public ReturnCode loadData(String ref) {
 
 		rating = new Rating();
 
 		try {
+			
+			ratingBaseSiteOriginalRef = ref;
 
-			ratingBaseSiteFullUrlString = ref;
-
-			URL url = new URL(ratingBaseSiteFullUrlString);
+			URL url = new URL(ref);
 			ratingBaseSitePrefix = url.getProtocol() + "://"
 					+ url.getAuthority();
 			ratingBaseSiteFile = url.getFile();
+			ratingBaseSiteNormalizedUrl = normalizeUrl(ref);
 
 			if (robotsDenied(ratingBaseSitePrefix)) {
 				return ReturnCode.ROBOTS_TXT;
 			}
 
-			String webpageAsString = urlToString(ratingBaseSiteFullUrlString,
+			String webpageAsString = urlToString(ratingBaseSiteNormalizedUrl,
 					encoding);
 			fillHeaderData(webpageAsString);
-			traverseReviewData(ref);
+			traverseReviewData(ratingBaseSiteNormalizedUrl);
 
 		} catch (IOException e) {
 
@@ -74,25 +82,73 @@ public abstract class AbstractDatasource implements Datasource {
 		return ReturnCode.OK;
 
 	}
+	
+	protected abstract void fillHeaderData(String fileContent);
+	
+	protected abstract List<Review> fillReviewData(String fileContent);
+	
+	protected void traverseReviewData(String entryUrl) throws IOException {
+		
+		final Object lock = new Object();
+
+		Set<String> urlsToProcess = new HashSet<String>();
+		Set<String> urlsProcessed = new HashSet<String>();
+		Set<PageLoader> workers = new HashSet<PageLoader>();
+
+		urlsToProcess.add(sanitizeUrl(normalizeUrl(entryUrl)));
+
+		while (!(urlsToProcess.isEmpty() && workers.isEmpty())) {
+
+			// Start new workers
+			Iterator<String> urlIter = urlsToProcess.iterator();
+			while (urlIter.hasNext()) {
+				String url = urlIter.next();
+				PageLoader worker = new PageLoader(url, lock);
+				worker.start();
+				workers.add(worker);
+				urlsProcessed.add(url);
+				urlIter.remove();
+			}
+			
+			// Sleep until a thread has finished
+			try {
+				synchronized (lock) {
+					lock.wait(500);
+				}
+			} catch (InterruptedException e) {
+				// do nothing
+			}
+
+			// Process workers' results
+			Iterator<PageLoader> wIter = workers.iterator();
+			while (wIter.hasNext()) {
+				PageLoader worker = wIter.next();
+				if (!worker.isAlive()) {
+					rating.getReviews().addAll(worker.getReviews());
+					for (String r : worker.getReferrers()) {
+						if (!urlsProcessed.contains(r)) {
+							urlsToProcess.add(r);
+						}
+					}
+					wIter.remove();
+				}
+			}
+
+		}
+	}
 
 	@Override
 	public Rating getRating() {
 		return rating;
 	}
-
-	public static String fileToString(String filename, String encoding) {
-
-		InputStream is = ClassLoader.getSystemClassLoader()
-				.getResourceAsStream(filename);
-		Scanner s = new Scanner(is, encoding).useDelimiter("\\A");
-		return s.hasNext() ? s.next() : "";
-
+	
+	public static String normalizeUrl(String urlString) throws MalformedURLException {
+		URL url = new URL(urlString);
+		return url.getProtocol() + "://" + url.getAuthority() + url.getFile();
 	}
-
-	public static String fileToString(String filename) {
-
-		return fileToString(filename, "UTF-8");
-
+	
+	protected String sanitizeUrl(String urlString) {
+		return urlString;
 	}
 
 	public static String urlToString(String urlString, String encoding)
@@ -162,6 +218,91 @@ public abstract class AbstractDatasource implements Datasource {
 		// check robots.txt here
 
 		return result;
+	}
+	
+	
+	protected class PageLoader extends Thread {
+
+		private String url;
+		private Set<String> refs;
+		private List<Review> revs;
+		
+		private Object listener;
+
+		public PageLoader(String url, Object listener) {
+			super();
+			this.url = url;
+			this.listener = listener;
+			refs = new HashSet<String>();
+		}
+		
+		public PageLoader(String url) {
+			this(url, null);
+		}
+
+		public void run() {
+
+			System.out.println("Processing " + url);
+
+			String webpageAsString = "";
+
+			try {
+				webpageAsString = urlToString(url, encoding);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+			revs = fillReviewData(webpageAsString);
+
+			int linkZoneStartIndex = webpageAsString.indexOf(
+						patternLinkZoneStart) + patternLinkZoneStart.length();
+			int linkZoneEndIndex = webpageAsString.indexOf(patternLinkZoneEnd, linkZoneStartIndex);
+
+			if ((linkZoneStartIndex != -1) && (linkZoneEndIndex != -1)) {
+
+				String linkZone = webpageAsString.substring(linkZoneStartIndex,
+						linkZoneEndIndex);
+
+				int nextReferrerStartIndex = linkZone.indexOf(patternLinkStart, 0);
+				
+				while (nextReferrerStartIndex != -1) {
+					nextReferrerStartIndex += patternLinkStart.length();
+
+					int nextReferrerEndIndex = linkZone.indexOf(patternLinkEnd,
+							nextReferrerStartIndex);
+					
+					String nextReferrer = linkZone.substring(
+							nextReferrerStartIndex, nextReferrerEndIndex);
+					String refUrl = "";
+					try {
+						refUrl = sanitizeUrl(normalizeUrl(patternLinkPrefix + nextReferrer));
+					} catch (MalformedURLException e) {
+						e.printStackTrace();
+					}
+					refs.add(refUrl);
+
+					nextReferrerStartIndex = linkZone.indexOf(patternLinkStart,
+							nextReferrerEndIndex + patternLinkEnd.length());
+				}
+
+			}
+			
+			if (listener != null) {
+				synchronized (listener) {
+					listener.notifyAll();
+				}
+			}
+
+		}
+
+		public Set<String> getReferrers() {
+			return refs;
+		}
+
+		public List<Review> getReviews() {
+			return revs;
+		}
+
 	}
 
 }

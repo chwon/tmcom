@@ -87,9 +87,9 @@ data.forEach( function(value) { value.numDays = (((value.last - value.first) / 8
 							   } );
 
 var  h=500
-	,w=800
+	,w=document.getElementById("main").scrollWidth
 	,margin=50
-	,minBarWidth = 10
+	,minBarWidth=10
 	,color = d3.scale.log().domain([0.0, total_density, 5.0, 10.0, total_reviews]).range(["white", "white", "blue", "yellow", "red"])
 	,shortDateFormat = d3.time.format("%b %d %Y")
 
@@ -104,7 +104,7 @@ var  h=500
 	,xAxis = d3.svg.axis()
 			 .scale(x)
 			 .orient("bottom")
-			 .ticks(2)
+			 .ticks(5)
 			 .tickFormat( function(d) { return shortDateFormat(d); } )
 	,yAxis = d3.svg.axis()
 			 .scale(y)
