@@ -37,7 +37,7 @@ public class TripadvisorDeDatasource extends TripadvisorComDatasource {
 		dateSearchPatternEnd = "</span";
 		quantitySearchPatternStart = "<img class=\"sprite-ratings\" src=\"http://c1.tacdn.com/img2/x.gif\" alt=\"";
 		quantitySearchPatternEnd = " von 5 Sternen\"";
-		
+		patternLinkPrefix = "http://" + websiteInfoBaseUrl;
 	}
 	
 }

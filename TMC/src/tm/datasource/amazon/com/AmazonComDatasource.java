@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 
 import tm.datasource.AbstractDatasource;
+import tm.rating.Rating;
 import tm.rating.Review;
 
 public class AmazonComDatasource extends AbstractDatasource {
@@ -51,8 +52,7 @@ public class AmazonComDatasource extends AbstractDatasource {
 
 	protected SimpleDateFormat inFormat = new SimpleDateFormat(
 			"MMMMM dd, yyyy", Locale.US);
-	protected SimpleDateFormat outFormat = new SimpleDateFormat(
-			"yyyy-MM-dd'T'HH:mm:ss");
+	protected SimpleDateFormat outFormat = Rating.dateFormat;
 
 	public AmazonComDatasource() {
 		super();

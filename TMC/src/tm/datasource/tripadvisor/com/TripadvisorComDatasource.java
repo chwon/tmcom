@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 
 import tm.datasource.AbstractDatasource;
+import tm.rating.Rating;
 import tm.rating.Review;
 
 public class TripadvisorComDatasource extends AbstractDatasource {
@@ -47,8 +48,7 @@ public class TripadvisorComDatasource extends AbstractDatasource {
 
 	protected SimpleDateFormat inFormat = new SimpleDateFormat(
 			"MMMMM dd, yyyy", Locale.US);
-	protected SimpleDateFormat outFormat = new SimpleDateFormat(
-			"yyyy-MM-dd'T'HH:mm:ss");
+	protected SimpleDateFormat outFormat = Rating.dateFormat;
 
 	public TripadvisorComDatasource() {
 		super();
@@ -57,7 +57,7 @@ public class TripadvisorComDatasource extends AbstractDatasource {
 		patternLinkZoneEnd = "&raquo;";
 		patternLinkStart = "<a href=\"";
 		patternLinkEnd = "\" class=\"";
-		patternLinkPrefix = ratingBaseSitePrefix;
+		patternLinkPrefix = "http://" + websiteInfoBaseUrl;
 	}
 
 	protected void fillHeaderData(String fileContent) {

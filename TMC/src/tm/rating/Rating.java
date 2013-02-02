@@ -19,7 +19,9 @@ package tm.rating;
 
 import java.io.FileNotFoundException;
 import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +36,9 @@ public class Rating {
 	private List<Review> reviews = new ArrayList<Review>();
 	
 	private Map<String, Review> idToRev = new HashMap<String, Review>();
+	
+	public static final SimpleDateFormat dateFormat = new SimpleDateFormat(
+			"yyyy-MM-dd'T'HH:mm:ss");
 	
 	public Review reviewForId(String id) {
 		if (idToRev.size() != reviews.size()) {
@@ -88,6 +93,10 @@ public class Rating {
 	
 	public void toXml(OutputStream output) {
 		RatingXmlIO.INSTANCE.writeRatingXml(this, output);
+	}
+	
+	public void sortReviewsByDate() {
+		Collections.sort(reviews, Review.getTimeComparator());
 	}
 
 }

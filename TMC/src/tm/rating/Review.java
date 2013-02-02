@@ -17,6 +17,9 @@
 
 package tm.rating;
 
+import java.text.ParseException;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.UUID;
 
 public class Review {
@@ -30,6 +33,8 @@ public class Review {
 	private ReviewerInfo reviewerInfo = new ReviewerInfo();
 	private ConnectionProperties connectionProperties = new ConnectionProperties();
 
+	private static TimeComparator timeComp = null;
+	
 	public String getId() {
 		return id;
 	}
@@ -90,5 +95,30 @@ public class Review {
 			ConnectionProperties connectionProperties) {
 		this.connectionProperties = connectionProperties;
 	}
+	
+	public static TimeComparator getTimeComparator() {
+		if (timeComp == null) {
+			timeComp = new TimeComparator();
+		}
+		return timeComp;
+	}
 
+}
+
+
+final class TimeComparator implements Comparator<Review> {
+
+	@Override
+	public int compare(Review o1, Review o2) {
+		Date firstRevTS = null;
+		Date secondRevTS = null;
+		try {
+			firstRevTS = Rating.dateFormat.parse(o1.getTimestamp());
+			secondRevTS = Rating.dateFormat.parse(o2.getTimestamp());
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		return firstRevTS.compareTo(secondRevTS);
+	}
+	
 }

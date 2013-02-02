@@ -101,6 +101,11 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 			}
 		}
 	}
+	
+//	protected void determineParameters() {
+//		rating.sortReviewsByDate();
+//		
+//	}
 
 	private Integer stringToInt(String intStr) {
 		int res;
@@ -214,22 +219,6 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 		// TODO Auto-generated method stub
 		return null;
 	}
-
-	// public void printClusters() {
-	//
-	// System.out.println(clusters.size()
-	// + " clusters found (including noise).");
-	//
-	// for (ReviewCluster c : clusters) {
-	// System.out.println(c);
-	// List<Integer> sortedVals = c.getSortedValues();
-	// for (Integer i : sortedVals) {
-	// Date date = new Date(i.longValue() * 1000L);
-	// System.out.println("\t" + date.toGMTString());
-	// }
-	// }
-	//
-	// }
 
 	private String fileToString(String filename) {
 

@@ -33,13 +33,14 @@ public abstract class AbstractEvaluator implements Evaluator {
 	public AbstractEvaluator(Datasource datasource) {
 		super();
 		rating = datasource.getRating();
+		determineParameters();
 		doEvaluation();
 	}
 	
 	public AbstractEvaluator(Datasource datasource, Map<String, String[]> params) {
 		super();
-		setParameters(params);
 		rating = datasource.getRating();
+		setParameters(params);
 		doEvaluation();
 	}
 	
@@ -52,6 +53,10 @@ public abstract class AbstractEvaluator implements Evaluator {
 
 	public Rating getRating() {
 		return rating;
+	}
+	
+	protected void determineParameters() {
+		// empty
 	}
 
 }

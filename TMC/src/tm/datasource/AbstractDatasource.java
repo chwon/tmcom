@@ -110,7 +110,7 @@ public abstract class AbstractDatasource implements Datasource {
 				urlIter.remove();
 			}
 			
-			// Sleep until a thread has finished
+			// Sleep until a worker has finished
 			try {
 				synchronized (lock) {
 					lock.wait(500);
