@@ -19,6 +19,7 @@ package tmcservlet;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.math.BigDecimal;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -130,8 +131,16 @@ public class TMcom extends HttpServlet {
 		} else if (datasourceName == null) {
 			responseBody = generateErrorPageBody("There is no data extractor assigned to " + reviewpage + ".");
 		} else {
+			
+			BigDecimal startTime = new BigDecimal(System.currentTimeMillis());
+			
 			responseBody = dispatchRequest(evaluatorName, datasourceName,
 					reviewpage, params);
+			
+			BigDecimal elapsedTime = (new BigDecimal(System.currentTimeMillis())).subtract(startTime);
+			String timeString = (elapsedTime.divide(new BigDecimal(1000), 2, BigDecimal.ROUND_HALF_UP)).toPlainString();
+			responseBody = responseBody.replace(Evaluator.placeholderDuration, timeString + "s");
+			
 		}
 
 		result = responsePageFrame.replace(responsePageFramePlaceholder,
@@ -186,7 +195,11 @@ public class TMcom extends HttpServlet {
 				evaluatorPool.put(evaluatorClass, eval);
 			}
 			
-			eval.setParameters(evalParameters);
+			if (evalParameters != null) {
+				eval.setParameters(evalParameters);
+			} else {
+				eval.determineParameters();
+			}
 
 			if (eval.loadData(ds) != Evaluator.ReturnCode.OK) {
 				return generateErrorPageBody("Evaluation failed!");

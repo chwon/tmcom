@@ -26,6 +26,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import org.joda.time.DateTime;
+import org.joda.time.Days;
+
 import tm.datasource.Datasource;
 import tm.evaluator.AbstractEvaluator;
 import tm.rating.Review;
@@ -56,6 +59,8 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 	private final String placeholderFirstTs = "FIRSTTS";
 	private final String placeholderLastTs = "LASTTS";
 	private final String placeholderFooterText = "FOOTERTEXT";
+	
+	private boolean determineParams = false;
 
 	public TimeClusterEvaluator(Datasource datasource) {
 		super(datasource);
@@ -67,6 +72,10 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 
 	@Override
 	protected ReturnCode doEvaluation() {
+		
+		if (determineParams) {
+			doParamDetermination();
+		}
 
 		ElkiDBScanAdapter dbscan = new ElkiDBScanAdapter(rating);
 		earliestTimestamp = dbscan.getEarliestTimestamp();
@@ -101,10 +110,28 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 		}
 	}
 	
-//	protected void determineParameters() {
-//		rating.sortReviewsByDate();
-//		
-//	}
+	public void determineParameters() {
+		
+		determineParams = true;
+		
+	}
+	
+	private void doParamDetermination() {
+		
+		rating.sortReviewsByDate();
+		
+		String firstDateString = rating.getReviews().get(0).getTimestamp();
+		String lastDateString = rating.getReviews().get(rating.getReviews().size() - 1).getTimestamp();
+		
+		DateTime first = new DateTime(firstDateString);
+		DateTime last = new DateTime(lastDateString);
+		DateTime today = new DateTime();
+		
+		Days timeSpan = Days.daysBetween(first, today);
+		
+		System.out.println("Reviews span " + timeSpan.getDays() + " days.");
+		
+	}
 
 	private Integer stringToInt(String intStr) {
 		int res;
@@ -172,7 +199,7 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 		String footerString = "";
 		String infoString = "<p style=\"text-align: center; font-size: 90%;\"> [ "
 				+ getRating().getReviews().size() + " reviews | &#949 = "
-				+ epsilonInDays + " | minPts = " + minpts + " ] </p>";
+				+ epsilonInDays + " | minPts = " + minpts + " | " + placeholderDuration + " ] </p>";
 
 		if (clusterNo > 1) { // at least one cluster found
 			String pluralSuffix = (clusterNo > 2) ? "s" : "";

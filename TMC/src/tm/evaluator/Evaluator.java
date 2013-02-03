@@ -28,9 +28,13 @@ public interface Evaluator {
 		ERROR
 	}
 	
+	public static String placeholderDuration = "ELAPSEDTIME";
+	
 	public ReturnCode loadData(Datasource datasource);
 	
 	public void setParameters(Map<String, String[]> params);
+	
+	public void determineParameters();
 	
 	public String generateEvaluationHtmlPage() throws UnsupportedOperationException;
 	

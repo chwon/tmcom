@@ -69,8 +69,6 @@ public abstract class AbstractDatasource implements Datasource {
 	}
 
 	public ReturnCode loadData(String ref) {
-		
-		long startTime = System.currentTimeMillis();
 
 		rating = new Rating();
 
@@ -98,9 +96,6 @@ public abstract class AbstractDatasource implements Datasource {
 			return ReturnCode.CONNECTION_ERROR;
 
 		}
-		
-		long elapsed = System.currentTimeMillis() - startTime;
-		System.out.println("Loading time: " + (elapsed / 1000));
 
 		return ReturnCode.OK;
 
