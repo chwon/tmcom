@@ -31,8 +31,8 @@ public class AmazonDeDatasource extends AmazonComDatasource {
 		websiteInfoName = "Amazon.de";
 		websiteInfoBaseUrl = "www.amazon.de";
 		
-		titleSearchPatternStart = "<span id=\"btAsinTitle\">";
-		titleSearchPatternEnd = "</span>";
+		titleSearchPatternStart = "<meta name=\"title\" content=\"";
+		titleSearchPatternEnd = "\" />";
 		
 		reviewpageSearchPatternStart = "<span>Alle Rezensionen anzeigen</span></span>&nbsp;</a></span></span>(<a href=\"";
 		reviewpageSearchPatternEnd = "\" >";

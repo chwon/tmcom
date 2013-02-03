@@ -49,8 +49,12 @@ public abstract class AbstractDatasource implements Datasource {
 	protected String patternLinkPrefix;
 
 	protected String encoding = "UTF-8";
+	
+	protected int MAX_THREADS = 5;
 
 	public ReturnCode loadData(String ref) {
+		
+		long startTime = System.currentTimeMillis();
 
 		rating = new Rating();
 
@@ -71,13 +75,16 @@ public abstract class AbstractDatasource implements Datasource {
 			String webpageAsString = urlToString(ratingBaseSiteNormalizedUrl,
 					encoding);
 			fillHeaderData(webpageAsString);
-			traverseReviewData(ratingBaseSiteNormalizedUrl);
+			traverseReviewData(generateReviewUrls(ratingBaseSiteNormalizedUrl));
 
 		} catch (IOException e) {
 
 			return ReturnCode.CONNECTION_ERROR;
 
 		}
+		
+		long elapsed = System.currentTimeMillis() - startTime;
+		System.out.println("Loading time: " + (elapsed / 1000));
 
 		return ReturnCode.OK;
 
@@ -87,7 +94,9 @@ public abstract class AbstractDatasource implements Datasource {
 	
 	protected abstract List<Review> fillReviewData(String fileContent);
 	
-	protected void traverseReviewData(String entryUrl) throws IOException {
+	protected abstract Set<String> generateReviewUrls(String entryPageUrl) throws IOException;
+	
+	protected void traverseReviewData(Set<String> reviewUrls) throws IOException {
 		
 		final Object lock = new Object();
 
@@ -95,17 +104,20 @@ public abstract class AbstractDatasource implements Datasource {
 		Set<String> urlsProcessed = new HashSet<String>();
 		Set<PageLoader> workers = new HashSet<PageLoader>();
 
-		urlsToProcess.add(sanitizeUrl(normalizeUrl(entryUrl)));
+		urlsToProcess.addAll(reviewUrls);
 
 		while (!(urlsToProcess.isEmpty() && workers.isEmpty())) {
 
+			int threadCnt = workers.size();
+			
 			// Start new workers
 			Iterator<String> urlIter = urlsToProcess.iterator();
-			while (urlIter.hasNext()) {
+			while (urlIter.hasNext() && (threadCnt < MAX_THREADS)) {
 				String url = urlIter.next();
-				PageLoader worker = new PageLoader(url, lock);
+				PageLoader worker = new PageLoader(url, false, lock);
 				worker.start();
 				workers.add(worker);
+				threadCnt++;
 				urlsProcessed.add(url);
 				urlIter.remove();
 			}
@@ -228,16 +240,18 @@ public abstract class AbstractDatasource implements Datasource {
 		private List<Review> revs;
 		
 		private Object listener;
+		private boolean extractReferrers;
 
-		public PageLoader(String url, Object listener) {
+		public PageLoader(String url, boolean extractReferrers, Object listener) {
 			super();
 			this.url = url;
+			this.extractReferrers = extractReferrers;
 			this.listener = listener;
 			refs = new HashSet<String>();
 		}
 		
-		public PageLoader(String url) {
-			this(url, null);
+		public PageLoader(String url, boolean extractReferrers) {
+			this(url, extractReferrers, null);
 		}
 
 		public void run() {
@@ -253,29 +267,46 @@ public abstract class AbstractDatasource implements Datasource {
 			}
 
 			revs = fillReviewData(webpageAsString);
+			
+			if (extractReferrers) {
+				extractRefs(webpageAsString);
+			}
+			
+			if (listener != null) {
+				synchronized (listener) {
+					listener.notifyAll();
+				}
+			}
 
-			int linkZoneStartIndex = webpageAsString.indexOf(
-						patternLinkZoneStart) + patternLinkZoneStart.length();
-			int linkZoneEndIndex = webpageAsString.indexOf(patternLinkZoneEnd, linkZoneStartIndex);
+		}
+		
+		private void extractRefs(String fileContent) {
+
+			int linkZoneStartIndex = fileContent.indexOf(patternLinkZoneStart)
+					+ patternLinkZoneStart.length();
+			int linkZoneEndIndex = fileContent.indexOf(patternLinkZoneEnd,
+					linkZoneStartIndex);
 
 			if ((linkZoneStartIndex != -1) && (linkZoneEndIndex != -1)) {
 
-				String linkZone = webpageAsString.substring(linkZoneStartIndex,
+				String linkZone = fileContent.substring(linkZoneStartIndex,
 						linkZoneEndIndex);
 
-				int nextReferrerStartIndex = linkZone.indexOf(patternLinkStart, 0);
-				
+				int nextReferrerStartIndex = linkZone.indexOf(patternLinkStart,
+						0);
+
 				while (nextReferrerStartIndex != -1) {
 					nextReferrerStartIndex += patternLinkStart.length();
 
 					int nextReferrerEndIndex = linkZone.indexOf(patternLinkEnd,
 							nextReferrerStartIndex);
-					
+
 					String nextReferrer = linkZone.substring(
 							nextReferrerStartIndex, nextReferrerEndIndex);
 					String refUrl = "";
 					try {
-						refUrl = sanitizeUrl(normalizeUrl(patternLinkPrefix + nextReferrer));
+						refUrl = sanitizeUrl(normalizeUrl(patternLinkPrefix
+								+ nextReferrer));
 					} catch (MalformedURLException e) {
 						e.printStackTrace();
 					}
@@ -286,13 +317,6 @@ public abstract class AbstractDatasource implements Datasource {
 				}
 
 			}
-			
-			if (listener != null) {
-				synchronized (listener) {
-					listener.notifyAll();
-				}
-			}
-
 		}
 
 		public Set<String> getReferrers() {

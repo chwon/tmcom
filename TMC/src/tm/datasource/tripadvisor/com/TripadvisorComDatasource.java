@@ -22,8 +22,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import tm.datasource.AbstractDatasource;
 import tm.rating.Rating;
@@ -40,6 +42,12 @@ public class TripadvisorComDatasource extends AbstractDatasource {
 
 	protected String nextPageSearchPatternStart = "<a href=\"";
 	protected String nextPageSearchPatternEnd = "\" class=\"guiArw sprite-pageNext";
+	
+	protected String lastReviewPagePatternStart = "<span class=\"paging pagePause\">...</span>\n<a href=\"";
+	protected String lastReviewPagePatternEnd = "\" class=\"";
+	
+	protected String pageNumberPatternStart = "Reviews-or";
+	protected String pageNumberPatternEnd = "0-";
 
 	protected String dateSearchPatternStart = "<span class=\"ratingDate\">Reviewed ";
 	protected String dateSearchPatternEnd = "</span";
@@ -79,6 +87,42 @@ public class TripadvisorComDatasource extends AbstractDatasource {
 		rating.getWebsiteInfo().setName(websiteInfoName);
 		rating.getWebsiteInfo().setBaseUrl(websiteInfoBaseUrl);
 
+	}
+	
+	@Override
+	protected Set<String> generateReviewUrls(String entryPageUrl)
+			throws IOException {
+		
+		Set<String> urlSet = new HashSet<String>();
+		String firstPageUrl = entryPageUrl;
+		urlSet.add(firstPageUrl);
+
+		String firstPageContent = urlToString(firstPageUrl,	encoding);
+		
+		int lastReviewPageStartIndex = firstPageContent.indexOf(lastReviewPagePatternStart);
+		
+		if (lastReviewPageStartIndex != -1) {
+			lastReviewPageStartIndex += lastReviewPagePatternStart.length();;
+			
+			int lastReviewPageEndIndex = firstPageContent.indexOf(lastReviewPagePatternEnd, lastReviewPageStartIndex);
+			String lastReviewPageUrl = firstPageContent.substring(lastReviewPageStartIndex, lastReviewPageEndIndex);
+			
+			int pageNumberIndexStart = lastReviewPageUrl.indexOf(pageNumberPatternStart) + pageNumberPatternStart.length();
+			int pageNumberIndexEnd = lastReviewPageUrl.indexOf(pageNumberPatternEnd, pageNumberIndexStart);
+			
+			String lastPageNumberString = lastReviewPageUrl.substring(pageNumberIndexStart, pageNumberIndexEnd);
+			String urlBeforePageNumber = lastReviewPageUrl.substring(0, pageNumberIndexStart);
+			String urlAfterPageNumber = lastReviewPageUrl.substring(pageNumberIndexEnd);
+			
+			int lastPageNumber = Integer.parseInt(lastPageNumberString);
+			
+			for (int i = lastPageNumber; i >= 1; i--) {
+				String urlToAdd = patternLinkPrefix + urlBeforePageNumber + i + urlAfterPageNumber;
+				urlSet.add(urlToAdd);
+			}
+		}
+			
+		return urlSet;
 	}
 
 	protected List<Review> fillReviewData(String fileContent) {
@@ -135,39 +179,6 @@ public class TripadvisorComDatasource extends AbstractDatasource {
 		}
 
 		return revs;
-
-	}
-	
-	protected void loadSequentially(String ref) throws IOException {
-
-		String currentWebpage = ref;
-
-		while (!currentWebpage.equals("")) {
-
-			System.out.println("Processing " + currentWebpage);
-
-			String webpageAsString = urlToString(currentWebpage, encoding);
-			rating.getReviews().addAll(fillReviewData(webpageAsString));
-
-			int nextPageAddressEndIndex = webpageAsString
-					.indexOf(nextPageSearchPatternEnd);
-
-			if (nextPageAddressEndIndex != -1) {
-
-				int nextPageAddressStartIndex = webpageAsString.lastIndexOf(
-						nextPageSearchPatternStart, nextPageAddressEndIndex)
-						+ nextPageSearchPatternStart.length();
-				String nextPagePath = webpageAsString.substring(
-						nextPageAddressStartIndex, nextPageAddressEndIndex);
-				currentWebpage = ratingBaseSitePrefix + nextPagePath;
-
-			} else {
-
-				currentWebpage = "";
-
-			}
-
-		}
 
 	}
 

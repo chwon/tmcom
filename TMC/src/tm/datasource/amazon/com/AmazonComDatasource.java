@@ -22,8 +22,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import tm.datasource.AbstractDatasource;
 import tm.rating.Rating;
@@ -34,11 +36,17 @@ public class AmazonComDatasource extends AbstractDatasource {
 	protected String websiteInfoName = "Amazon.com";
 	protected String websiteInfoBaseUrl = "www.amazon.com";
 
-	protected String titleSearchPatternStart = "<span id=\"btAsinTitle\" >";
-	protected String titleSearchPatternEnd = "</span>";
+	protected String titleSearchPatternStart = "<meta name=\"title\" content=\"";
+	protected String titleSearchPatternEnd = "\" />";
 
 	protected String reviewpageSearchPatternStart = "<span>See all reviews</span></span>&nbsp;</a></span></span>(<a href=\"";
 	protected String reviewpageSearchPatternEnd = "\" >";
+	
+	protected String lastReviewPagePatternStart = "&hellip; <a href=\"";
+	protected String lastReviewPagePatternEnd = "\" >";
+	
+	protected String pageNumberPatternStart = "&pageNumber=";
+	protected String pageNumberPatternEnd = "&";
 
 	protected String reviewPageOffsetString = "<table id=\"productReviews\"";
 
@@ -89,12 +97,11 @@ public class AmazonComDatasource extends AbstractDatasource {
 		rating.getWebsiteInfo().setBaseUrl(websiteInfoBaseUrl);
 
 	}
-
-	@Override
-	protected void traverseReviewData(String entryUrl) throws IOException {
-
+	
+	protected Set<String> generateReviewUrls(String entryPageUrl) throws IOException {
+		
 		// Search for URL of first review page
-		String mainPageAsString = urlToString(entryUrl, encoding);
+		String mainPageAsString = urlToString(entryPageUrl, encoding);
 		int firstReviewpageUrlStartIndex = mainPageAsString
 				.indexOf(reviewpageSearchPatternStart)
 				+ reviewpageSearchPatternStart.length();
@@ -102,44 +109,38 @@ public class AmazonComDatasource extends AbstractDatasource {
 				reviewpageSearchPatternEnd, firstReviewpageUrlStartIndex);
 		String firstReviewPageUrl = mainPageAsString.substring(
 				firstReviewpageUrlStartIndex, firstReviewpageUrlEndIndex);
+		
+		
 
-		super.traverseReviewData(firstReviewPageUrl);
+		Set<String> urlSet = new HashSet<String>();
+		String firstPageUrl = firstReviewPageUrl;
+		urlSet.add(firstPageUrl);
 
-		// String currentWebpage = firstReviewPageUrl;
-		//
-		// while (!currentWebpage.equals("")) {
-		//
-		// System.out.println("Processing " + currentWebpage);
-		//
-		// String webpageAsString = urlToString(currentWebpage, encoding);
-		// rating.getReviews().addAll(fillReviewData(webpageAsString));
-		//
-		// int nextPageAddressEndIndex = webpageAsString
-		// .indexOf(nextPageSearchPatternEnd);
-		//
-		// if (nextPageAddressEndIndex != -1) {
-		//
-		// int nextPageAddressStartIndex = webpageAsString.lastIndexOf(
-		// nextPageSearchPatternStart, nextPageAddressEndIndex)
-		// + nextPageSearchPatternStart.length();
-		// String nextPageUrl = webpageAsString.substring(
-		// nextPageAddressStartIndex, nextPageAddressEndIndex);
-		// currentWebpage = nextPageUrl;
-		//
-		// } else {
-		//
-		// currentWebpage = "";
-		//
-		// }
-		//
-		// }
-	}
-
-	protected String sanitizeUrl(String urlString) {
-		return urlString.replace("_link_next_", "_link_")
-						.replace("_link_prev_", "_link_")
-						.replace("&showViewpoints=1", "&showViewpoints=0")
-						.replace("dp_top_cm_cr_acr_txt ", "cm_cr_pr_top_link_1");
+		String firstPageContent = urlToString(firstPageUrl,	encoding);
+		
+		int lastReviewPageStartIndex = firstPageContent.indexOf(lastReviewPagePatternStart);
+		if (lastReviewPageStartIndex != -1) {
+			lastReviewPageStartIndex += lastReviewPagePatternStart.length();;
+			
+			int lastReviewPageEndIndex = firstPageContent.indexOf(lastReviewPagePatternEnd, lastReviewPageStartIndex);
+			String lastReviewPageUrl = firstPageContent.substring(lastReviewPageStartIndex, lastReviewPageEndIndex);
+			
+			int pageNumberIndexStart = lastReviewPageUrl.indexOf(pageNumberPatternStart) + pageNumberPatternStart.length();
+			int pageNumberIndexEnd = lastReviewPageUrl.indexOf(pageNumberPatternEnd, pageNumberIndexStart);
+			
+			String lastPageNumberString = lastReviewPageUrl.substring(pageNumberIndexStart, pageNumberIndexEnd);
+			String urlBeforePageNumber = lastReviewPageUrl.substring(0, pageNumberIndexStart);
+			String urlAfterPageNumber = lastReviewPageUrl.substring(pageNumberIndexEnd);
+			
+			int lastPageNumber = Integer.parseInt(lastPageNumberString);
+			
+			for (int i = lastPageNumber; i >= 2; i--) {
+				String urlToAdd = urlBeforePageNumber + i + urlAfterPageNumber;
+				urlSet.add(urlToAdd);
+			}
+		}
+			
+		return urlSet;
 	}
 
 	protected List<Review> fillReviewData(String fileContent) {
@@ -200,6 +201,13 @@ public class AmazonComDatasource extends AbstractDatasource {
 
 		return revs;
 
+	}
+	
+	protected String sanitizeUrl(String urlString) {
+		return urlString.replace("_link_next_", "_link_")
+						.replace("_link_prev_", "_link_")
+						.replace("&showViewpoints=1", "&showViewpoints=0")
+						.replace("dp_top_cm_cr_acr_txt", "cm_cr_pr_top_link_1");
 	}
 
 }
