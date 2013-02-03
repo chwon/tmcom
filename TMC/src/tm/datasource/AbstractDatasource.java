@@ -27,6 +27,7 @@ import java.net.URLConnection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 
 import tm.rating.Rating;
@@ -34,6 +35,8 @@ import tm.rating.Review;
 
 public abstract class AbstractDatasource implements Datasource {
 
+	protected String propertiesFile = "/resources/datasource.properties";
+	
 	protected Rating rating;
 
 	protected String ratingBaseSiteOriginalRef;
@@ -50,7 +53,20 @@ public abstract class AbstractDatasource implements Datasource {
 
 	protected String encoding = "UTF-8";
 	
+	protected int MAX_THREADS_DEFAULT = 5;
 	protected int MAX_THREADS = 5;
+	
+	public AbstractDatasource() {
+		Properties prop = new Properties();
+		try {
+			prop.load(this.getClass().getResourceAsStream(
+					propertiesFile));
+			String maxThreadsString = prop.getProperty("MAX_THREADS");
+			MAX_THREADS = Integer.parseInt(maxThreadsString);
+		} catch (IOException e) {
+			// do nothing
+		}
+	}
 
 	public ReturnCode loadData(String ref) {
 		
