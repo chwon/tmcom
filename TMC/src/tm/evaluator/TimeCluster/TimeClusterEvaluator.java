@@ -22,15 +22,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
+import java.text.ParseException;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.joda.time.DateTime;
 import org.joda.time.Days;
 
 import tm.datasource.Datasource;
 import tm.evaluator.AbstractEvaluator;
+import tm.rating.Rating;
 import tm.rating.Review;
 
 public class TimeClusterEvaluator extends AbstractEvaluator {
@@ -41,6 +45,9 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 	private final int epsilonDefaultInDays = 7;
 	private final int epsilonDefault = epsilonDefaultInDays * (60 * 60 * 24);
 	private final int minptsDefault = 3;
+	
+	private final int MIN_EPSILON = 3;
+	private final int MIN_MINPTS = 3;
 
 	private int epsilonInDays = epsilonDefaultInDays;
 	private int epsilon = epsilonDefault;
@@ -60,7 +67,13 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 	private final String placeholderLastTs = "LASTTS";
 	private final String placeholderFooterText = "FOOTERTEXT";
 	
+	
+	
 	private boolean determineParams = false;
+	private final String paramPropFile = "/resources/timeclusterevaluator.properties";
+	float densityFactor;
+	float epsilonFraction;
+	boolean useDefaults;
 
 	public TimeClusterEvaluator(Datasource datasource) {
 		super(datasource);
@@ -68,13 +81,40 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 
 	public TimeClusterEvaluator() {
 		super();
+		loadProperties();
+	}
+	
+	private void loadProperties() {
+		try {
+			Properties paramProps = new Properties();
+			paramProps.load(this.getClass().getResourceAsStream(paramPropFile));
+			useDefaults = Boolean.parseBoolean(paramProps
+					.getProperty("USE_DEFAULTS"));
+			densityFactor = Float.parseFloat(paramProps
+					.getProperty("DENSITY_FACTOR"));
+			epsilonFraction = Float.parseFloat(paramProps
+					.getProperty("EPSILON_FRACTION"));
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override
 	protected ReturnCode doEvaluation() {
-		
+
 		if (determineParams) {
-			doParamDetermination();
+			if (!useDefaults) {
+				try {
+					doParamDetermination();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			} else {
+				epsilonInDays = epsilonDefaultInDays;
+				epsilon = epsilonDefault;
+				minpts = minptsDefault;
+			}
 		}
 
 		ElkiDBScanAdapter dbscan = new ElkiDBScanAdapter(rating);
@@ -89,25 +129,40 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 
 	@Override
 	public void setParameters(Map<String, String[]> params) {
+		
+		determineParams = false;
+		
 		if (params == null)
 			return;
-
+		
+		boolean epsilonSet = false;
+		boolean minptsSet = false;
+		
 		String[] pEpsArray = params.get(paramEpsilonInDays);
 		if (pEpsArray != null && pEpsArray.length > 0) {
-			Integer pEpsInt = stringToInt(pEpsArray[0]);
-			if (pEpsInt != null && pEpsInt.intValue() > 0) {
-				epsilonInDays = pEpsInt.intValue();
-				epsilon = pEpsInt.intValue() * (60 * 60 * 24);
+			int pEpsInt = Integer.parseInt((pEpsArray[0]));
+			if (pEpsInt > MIN_EPSILON) {
+				epsilonInDays = pEpsInt;
+				epsilon = pEpsInt * (60 * 60 * 24);
+				epsilonSet = true;
 			}
 		}
 
 		String[] pMinptsArray = params.get(paramMinpts);
 		if (pMinptsArray != null && pMinptsArray.length > 0) {
-			Integer pMinptsInt = stringToInt(pMinptsArray[0]);
-			if (pMinptsInt != null && pMinptsInt.intValue() > 0) {
-				minpts = pMinptsInt.intValue();
+			int pMinptsInt = Integer.parseInt(pMinptsArray[0]);
+			if (pMinptsInt > 0) {
+				minpts = pMinptsInt;
+				minptsSet = true;
 			}
 		}
+		
+		if (!(epsilonSet && minptsSet)) {
+			epsilonInDays = epsilonDefaultInDays;
+			epsilon = epsilonDefault;
+			minpts = minptsDefault;
+		}
+		
 	}
 	
 	public void determineParameters() {
@@ -116,20 +171,49 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 		
 	}
 	
-	private void doParamDetermination() {
+	private void doParamDetermination() throws IOException {
 		
 		rating.sortReviewsByDate();
 		
 		String firstDateString = rating.getReviews().get(0).getTimestamp();
-		String lastDateString = rating.getReviews().get(rating.getReviews().size() - 1).getTimestamp();
+		Date firstRating = null;
+		try {
+			firstRating = Rating.dateFormat.parse(firstDateString);
+		} catch (ParseException e) {
+			throw new IOException(e);
+		}
 		
-		DateTime first = new DateTime(firstDateString);
-		DateTime last = new DateTime(lastDateString);
+		DateTime first = new DateTime(firstRating);
 		DateTime today = new DateTime();
 		
-		Days timeSpan = Days.daysBetween(first, today);
+		int timeSpanInDays = Days.daysBetween(first, today).getDays();
+		int noReviews = rating.getReviews().size();
 		
-		System.out.println("Reviews span " + timeSpan.getDays() + " days.");
+		System.out.println(timeSpanInDays);
+		System.out.println(noReviews);
+		
+		int resultingEpsilonInDays = Math.round(timeSpanInDays / epsilonFraction);
+		
+		System.out.println(resultingEpsilonInDays);
+		
+		if (resultingEpsilonInDays >= MIN_EPSILON) {
+			epsilonInDays = resultingEpsilonInDays;
+			epsilon = epsilonInDays * (60 * 60 * 24);
+		} else {
+			epsilonInDays = epsilonDefaultInDays;
+			epsilon = epsilonDefault;		
+		}
+		
+		float density = noReviews / (float) timeSpanInDays;
+		int resultingMinpts = (Math.round((epsilonInDays * density) * densityFactor));
+		
+		System.out.println(resultingMinpts);
+		
+		if (resultingMinpts >= MIN_MINPTS) {
+			minpts = resultingMinpts;
+		} else {
+			minpts = minptsDefault;
+		}
 		
 	}
 
