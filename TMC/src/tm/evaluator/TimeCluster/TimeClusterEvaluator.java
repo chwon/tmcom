@@ -48,8 +48,8 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 	private final int epsilonDefault = epsilonDefaultInDays * (60 * 60 * 24);
 	private final int minptsDefault = 3;
 	
-	private final int MIN_EPSILON = 3;
-	private final int MIN_MINPTS = 3;
+	private final int MIN_EPSILON = 1;
+	private final int MIN_MINPTS = 2;
 
 	private int epsilonInDays = epsilonDefaultInDays;
 	private int epsilon = epsilonDefault;
@@ -143,20 +143,16 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 		String[] pEpsArray = params.get(paramEpsilonInDays);
 		if (pEpsArray != null && pEpsArray.length > 0) {
 			int pEpsInt = Integer.parseInt((pEpsArray[0]));
-			if (pEpsInt > MIN_EPSILON) {
 				epsilonInDays = pEpsInt;
 				epsilon = pEpsInt * (60 * 60 * 24);
 				epsilonSet = true;
-			}
 		}
 
 		String[] pMinptsArray = params.get(paramMinpts);
 		if (pMinptsArray != null && pMinptsArray.length > 0) {
 			int pMinptsInt = Integer.parseInt(pMinptsArray[0]);
-			if (pMinptsInt > 0) {
 				minpts = pMinptsInt;
 				minptsSet = true;
-			}
 		}
 		
 		if (!(epsilonSet && minptsSet)) {
@@ -191,30 +187,23 @@ public class TimeClusterEvaluator extends AbstractEvaluator {
 		int timeSpanInDays = Days.daysBetween(first, today).getDays();
 		int noReviews = rating.getReviews().size();
 		
-		System.out.println(timeSpanInDays);
-		System.out.println(noReviews);
-		
 		int resultingEpsilonInDays = Math.round(timeSpanInDays / epsilonFraction);
-		
-		System.out.println(resultingEpsilonInDays);
 		
 		if (resultingEpsilonInDays >= MIN_EPSILON) {
 			epsilonInDays = resultingEpsilonInDays;
 			epsilon = epsilonInDays * (60 * 60 * 24);
 		} else {
-			epsilonInDays = epsilonDefaultInDays;
-			epsilon = epsilonDefault;		
+			epsilonInDays = MIN_EPSILON;
+			epsilon = MIN_EPSILON * (60 * 60 * 24);		
 		}
 		
 		float density = noReviews / (float) timeSpanInDays;
 		int resultingMinpts = (Math.round((epsilonInDays * density) * densityFactor));
 		
-		System.out.println(resultingMinpts);
-		
 		if (resultingMinpts >= MIN_MINPTS) {
 			minpts = resultingMinpts;
 		} else {
-			minpts = minptsDefault;
+			minpts = MIN_MINPTS;
 		}
 		
 	}

@@ -44,10 +44,10 @@ public class TripadvisorComDatasource extends AbstractDatasource {
 
 	protected String nextPageSearchPatternStart = "<a href=\"";
 	protected String nextPageSearchPatternEnd = "\" class=\"guiArw sprite-pageNext";
-	
-	protected String lastReviewPagePatternStart = "<span class=\"paging pagePause\">...</span>\n<a href=\"";
-	protected String lastReviewPagePatternEnd = "\" class=\"";
-	
+
+	protected String lastReviewPagePatternStart = "<a href=\"";
+	protected String lastReviewPagePatternEnd = "\" class=\"paging";
+
 	protected String pageNumberPatternStart = "Reviews-or";
 	protected String pageNumberPatternEnd = "0-";
 
@@ -62,7 +62,7 @@ public class TripadvisorComDatasource extends AbstractDatasource {
 
 	public TripadvisorComDatasource() {
 		super();
-		
+
 		patternLinkZoneStart = "<div id=\"\" class=\"pgLinks\">";
 		patternLinkZoneEnd = "&raquo;";
 		patternLinkStart = "<a href=\"";
@@ -90,40 +90,51 @@ public class TripadvisorComDatasource extends AbstractDatasource {
 		rating.getWebsiteInfo().setBaseUrl(websiteInfoBaseUrl);
 
 	}
-	
+
 	@Override
 	protected Set<String> generateReviewUrls(String entryPageUrl)
 			throws IOException {
-		
+
 		Set<String> urlSet = new HashSet<String>();
 		String firstPageUrl = entryPageUrl;
 		urlSet.add(firstPageUrl);
 
-		String firstPageContent = urlToString(firstPageUrl,	encoding);
-		
-		int lastReviewPageStartIndex = firstPageContent.indexOf(lastReviewPagePatternStart);
-		
-		if (lastReviewPageStartIndex != -1) {
-			lastReviewPageStartIndex += lastReviewPagePatternStart.length();;
-			
-			int lastReviewPageEndIndex = firstPageContent.indexOf(lastReviewPagePatternEnd, lastReviewPageStartIndex);
-			String lastReviewPageUrl = firstPageContent.substring(lastReviewPageStartIndex, lastReviewPageEndIndex);
-			
-			int pageNumberIndexStart = lastReviewPageUrl.indexOf(pageNumberPatternStart) + pageNumberPatternStart.length();
-			int pageNumberIndexEnd = lastReviewPageUrl.indexOf(pageNumberPatternEnd, pageNumberIndexStart);
-			
-			String lastPageNumberString = lastReviewPageUrl.substring(pageNumberIndexStart, pageNumberIndexEnd);
-			String urlBeforePageNumber = lastReviewPageUrl.substring(0, pageNumberIndexStart);
-			String urlAfterPageNumber = lastReviewPageUrl.substring(pageNumberIndexEnd);
-			
+		String firstPageContent = urlToString(firstPageUrl, encoding);
+
+		int nextReviewPageEndIndex = firstPageContent
+				.indexOf(nextPageSearchPatternEnd);
+		if (nextReviewPageEndIndex != -1) {
+			int lastReviewPageEndIndex = firstPageContent.lastIndexOf(
+					lastReviewPagePatternEnd, nextReviewPageEndIndex - 1);
+			int lastReviewPageStartIndex = firstPageContent.lastIndexOf(
+					lastReviewPagePatternStart, lastReviewPageEndIndex)
+					+ lastReviewPagePatternStart.length();
+
+			String lastReviewPageUrl = firstPageContent.substring(
+					lastReviewPageStartIndex, lastReviewPageEndIndex);
+
+			int pageNumberIndexStart = lastReviewPageUrl
+					.indexOf(pageNumberPatternStart)
+					+ pageNumberPatternStart.length();
+			int pageNumberIndexEnd = lastReviewPageUrl.indexOf(
+					pageNumberPatternEnd, pageNumberIndexStart);
+
+			String lastPageNumberString = lastReviewPageUrl.substring(
+					pageNumberIndexStart, pageNumberIndexEnd);
+			String urlBeforePageNumber = lastReviewPageUrl.substring(0,
+					pageNumberIndexStart);
+			String urlAfterPageNumber = lastReviewPageUrl
+					.substring(pageNumberIndexEnd);
+
 			int lastPageNumber = Integer.parseInt(lastPageNumberString);
-			
+
 			for (int i = lastPageNumber; i >= 1; i--) {
-				String urlToAdd = patternLinkPrefix + urlBeforePageNumber + i + urlAfterPageNumber;
+				String urlToAdd = patternLinkPrefix + urlBeforePageNumber + i
+						+ urlAfterPageNumber;
 				urlSet.add(urlToAdd);
 			}
 		}
-			
+
 		return urlSet;
 	}
 

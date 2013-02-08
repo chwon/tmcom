@@ -44,7 +44,7 @@ public class AmazonComDatasource extends AbstractDatasource {
 	protected String reviewpageSearchPatternStart = "<span>See all reviews</span></span>&nbsp;</a></span></span>(<a href=\"";
 	protected String reviewpageSearchPatternEnd = "\" >";
 	
-	protected String lastReviewPagePatternStart = "&hellip; <a href=\"";
+	protected String lastReviewPagePatternStart = "<a href=\"";
 	protected String lastReviewPagePatternEnd = "\" >";
 	
 	protected String pageNumberPatternStart = "&pageNumber=";
@@ -120,11 +120,10 @@ public class AmazonComDatasource extends AbstractDatasource {
 
 		String firstPageContent = urlToString(firstPageUrl,	encoding);
 		
-		int lastReviewPageStartIndex = firstPageContent.indexOf(lastReviewPagePatternStart);
-		if (lastReviewPageStartIndex != -1) {
-			lastReviewPageStartIndex += lastReviewPagePatternStart.length();;
-			
-			int lastReviewPageEndIndex = firstPageContent.indexOf(lastReviewPagePatternEnd, lastReviewPageStartIndex);
+		int nextReviewPageEndIndex = firstPageContent.indexOf(nextPageSearchPatternEnd);
+		if (nextReviewPageEndIndex != -1) {
+			int lastReviewPageEndIndex = firstPageContent.lastIndexOf(lastReviewPagePatternEnd, nextReviewPageEndIndex - 1);
+			int lastReviewPageStartIndex = firstPageContent.lastIndexOf(lastReviewPagePatternStart, lastReviewPageEndIndex) + lastReviewPagePatternStart.length(); 
 			String lastReviewPageUrl = firstPageContent.substring(lastReviewPageStartIndex, lastReviewPageEndIndex);
 			
 			int pageNumberIndexStart = lastReviewPageUrl.indexOf(pageNumberPatternStart) + pageNumberPatternStart.length();
