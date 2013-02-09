@@ -26,6 +26,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -118,6 +119,8 @@ public abstract class AbstractDatasource implements Datasource {
 		Set<PageLoader> workers = new HashSet<PageLoader>();
 
 		urlsToProcess.addAll(reviewUrls);
+		
+		System.out.println("[" + new Date().toString() + "] " + this.getClass().getSimpleName() + ": Start loading.");
 
 		while (!(urlsToProcess.isEmpty() && workers.isEmpty())) {
 
@@ -160,6 +163,9 @@ public abstract class AbstractDatasource implements Datasource {
 			}
 
 		}
+		
+		System.out.println("[" + new Date().toString() + "] " + this.getClass().getSimpleName() + ": Finished loading.");
+		
 	}
 
 	@Override
@@ -269,7 +275,7 @@ public abstract class AbstractDatasource implements Datasource {
 
 		public void run() {
 
-			System.out.println("Processing " + url);
+			System.out.println("[" + new Date().toString() + "] Processing " + url);
 
 			String webpageAsString = "";
 

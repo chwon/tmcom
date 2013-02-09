@@ -15,12 +15,13 @@
 
  You should have received a copy of the GNU Affero General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
 package tm.evaluator.TimeCluster;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -59,21 +60,22 @@ public class ElkiDBScanAdapter {
 	private Database db;
 	private Clustering<Model> clustering;
 	private Collection<ReviewCluster> clusters;
-	
+
 	private Relation payloadRelation;
 	private Relation labelRelation;
-	
+
 	private Rating rating;
-	
+
 	private InputStream timeValueStream;
 	private String earliestDate;
 	private String latestDate;
 	private String earliestTimestamp;
 	private String latestTimestamp;
-	private SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-	private SimpleDateFormat dateFormat = new SimpleDateFormat("MMMMM dd, yyyy", Locale.US);
+	private SimpleDateFormat dateTimeFormat = new SimpleDateFormat(
+			"yyyy-MM-dd'T'HH:mm:ss");
+	private SimpleDateFormat dateFormat = new SimpleDateFormat(
+			"MMMMM dd, yyyy", Locale.US);
 
-	
 	public ElkiDBScanAdapter(Rating rating) {
 		this.rating = rating;
 		createTimeValueStream();
@@ -117,7 +119,7 @@ public class ElkiDBScanAdapter {
 		db.initialize();
 
 	}
-	
+
 	public Collection<ReviewCluster> run(int epsilon, int minpts) {
 
 		// set parameters for dbscan
@@ -137,13 +139,13 @@ public class ElkiDBScanAdapter {
 		return clusters;
 
 	}
-	
+
 	private void genClusterObjects() {
 
 		clusters = new ArrayList<ReviewCluster>();
-		
+
 		List<Cluster<Model>> elkiClusters = clustering.getToplevelClusters();
-		
+
 		Collection<Relation<?>> elkiRelations = db.getRelations();
 		for (Relation<?> r : elkiRelations) {
 			String relId = r.getLongName();
@@ -154,16 +156,16 @@ public class ElkiDBScanAdapter {
 				labelRelation = r;
 			}
 		}
-		
+
 		if (payloadRelation == null || labelRelation == null) {
 			throw new RuntimeException("Required relation missing in database.");
 		}
 
 		for (Cluster<Model> c : elkiClusters) {
-			
+
 			ReviewCluster cluster = new ReviewCluster();
 			cluster.setName(c.getNameAutomatic());
-			
+
 			Iterator<DBID> iter = c.getIDs().iterator();
 			while (iter.hasNext()) {
 				DBID dbid = iter.next();
@@ -172,15 +174,15 @@ public class ElkiDBScanAdapter {
 				Review rev = rating.reviewForId(revId);
 				cluster.put(rev, new Integer(entry.intValue(1)));
 			}
-			
+
 			clusters.add(cluster);
 
 		}
-		
+
 	}
-	
+
 	private void createTimeValueStream() {
-		
+
 		try {
 			Date tempEarliest = null;
 			Date tempLatest = null;
@@ -199,7 +201,7 @@ public class ElkiDBScanAdapter {
 				long tsSeconds = timestamp.getTime() / 1000L;
 				String tsString = Long.toString(tsSeconds);
 				sb.append(tsString + " " + rev.getId() + "\n");
-				
+
 				if (timestamp.before(tempEarliest)) {
 					tempEarliest = timestamp;
 				}
@@ -211,10 +213,10 @@ public class ElkiDBScanAdapter {
 
 			timeValueStream = new ByteArrayInputStream(sb.toString().getBytes(
 					"UTF-8"));
-			
+
 			earliestDate = dateFormat.format(tempEarliest);
 			latestDate = dateFormat.format(tempLatest);
-			
+
 			earliestTimestamp = Long.toString(tempEarliest.getTime() / 1000L);
 			latestTimestamp = Long.toString(tempLatest.getTime() / 1000L);
 
@@ -224,17 +226,14 @@ public class ElkiDBScanAdapter {
 		}
 
 	}
-	
-	
+
 	public String getEarliestTimestamp() {
 		return earliestTimestamp;
 	}
-	
-	
+
 	public String getLatestTimestamp() {
 		return latestTimestamp;
 	}
-	
 
 	public void printClusteringInfo() {
 
