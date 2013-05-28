@@ -38,8 +38,19 @@ import tm.datasource.Datasource;
 import tm.evaluator.Evaluator;
 
 /**
- * Servlet implementation class TMcom
+ * The <code>TMcom</code> class is TM's frontend class that
+ * receives requests and dispatches them to the appropriate
+ * datasource and evaluator.
+ * 
+ * Implemented as a subtype of <code>HttpServlet</code> it
+ * receives requests through Http Post/Get actions and generates
+ * corresponding response message as defined in the applicable 
+ * evaluator.
+ * 
+ * @author chwon
+ * 
  */
+
 @WebServlet("/TMcom")
 public class TMcom extends HttpServlet {
 
@@ -65,7 +76,8 @@ public class TMcom extends HttpServlet {
 	private Map<Class, Evaluator> evaluatorPool;
 
 	/**
-	 * @see HttpServlet#HttpServlet()
+	 * Constructs and initializes an instance. Upon return,
+	 * the instance is ready to accept requests. 
 	 */
 	public TMcom() {
 		super();
@@ -101,8 +113,8 @@ public class TMcom extends HttpServlet {
 
 
 	/**
-	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
-	 *      response)
+	 * Checks parameters, dispatches them to an appropriate evaluator and 
+	 * forwards the generated result as an HTTP response.
 	 */
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
@@ -155,8 +167,8 @@ public class TMcom extends HttpServlet {
 	}
 
 	/**
-	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse
-	 *      response)
+	 * Checks parameters, dispatches them to an appropriate evaluator and 
+	 * forwards the generated result as an HTTP response.
 	 */
 	protected void doPost(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
